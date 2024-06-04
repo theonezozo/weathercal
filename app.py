@@ -12,6 +12,7 @@ from requests import RequestException
 SHORT_FORECAST = 'shortForecast'
 
 PORT = 8000
+# URLs for fetching weather forecasts. For now, they're hard-coded to downtown Mountain View, CA, USA.
 URL = 'https://api.weather.gov/gridpoints/MTR/93,86/forecast/hourly'
 ALERT_URL = 'https://api.weather.gov/alerts/active/zone/CAZ508'
 MIN_CHANCE_RAIN = 33
