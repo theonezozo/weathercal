@@ -9,12 +9,12 @@ import pytz
 import requests
 from requests import RequestException
 
-SHORT_FORECAST = 'shortForecast'
+SHORT_FORECAST = "shortForecast"
 
 PORT = 8000
 # URLs for fetching weather forecasts. For now, they're hard-coded to downtown Mountain View, CA, USA.
-URL = 'https://api.weather.gov/gridpoints/MTR/93,86/forecast/hourly'
-ALERT_URL = 'https://api.weather.gov/alerts/active/zone/CAZ508'
+URL = "https://api.weather.gov/gridpoints/MTR/93,86/forecast/hourly"
+ALERT_URL = "https://api.weather.gov/alerts/active/zone/CAZ508"
 MIN_CHANCE_RAIN = 33
 
 
@@ -33,11 +33,13 @@ def weather_blocks(periods, interest_fn):
     current_block = []
     for period in periods:
         of_interest = interest_fn(period)
-        rain_interest = (interest_fn == is_rainy)
+        rain_interest = interest_fn == is_rainy
         forecast = period[SHORT_FORECAST]
         if of_interest:  # this is an hour we'd consider interesting
             # For rainy weather blocks, the shortForecast must match.
-            if current_block and (not rain_interest or current_block[0][SHORT_FORECAST] == forecast):
+            if current_block and (
+                not rain_interest or current_block[0][SHORT_FORECAST] == forecast
+            ):
                 # we can add this hour to the current block
                 current_block.append(period)
             else:
@@ -54,19 +56,19 @@ def weather_blocks(periods, interest_fn):
 
 
 def is_rainy(period):
-    return period['probabilityOfPrecipitation']['value'] > MIN_CHANCE_RAIN
+    return period["probabilityOfPrecipitation"]["value"] > MIN_CHANCE_RAIN
 
 
 def is_warm(period):
-    return period['temperature'] >= 68
+    return period["temperature"] >= 68
 
 
 def is_cool(period):
-    return period['temperature'] <= 72 and period['dewpoint']['value'] <= 15.5556
+    return period["temperature"] <= 72 and period["dewpoint"]["value"] <= 15.5556
 
 
 def is_comfortable(period):
-    return 68 <= period['temperature'] <= 72
+    return 68 <= period["temperature"] <= 72
 
 
 def days(periods):
@@ -99,10 +101,10 @@ def days(periods):
     current_day = []
     current_date = None
     for period in periods:
-        if not period['isDaytime']:
+        if not period["isDaytime"]:
             continue
-        start_time = period['startTime']
-        this_date: object = start_time.split('T')[0]
+        start_time = period["startTime"]
+        this_date: object = start_time.split("T")[0]
         if current_date != this_date:
             if current_day:
                 yield current_day
@@ -126,9 +128,9 @@ def forecast_desirability(period):
 
     """
     # Treat low probability of rain forecasts as equivalent
-    prob_precip = max(period['probabilityOfPrecipitation']['value'], MIN_CHANCE_RAIN)
-    temp_discomfort = abs(70 - period['temperature'])
-    wind_speed = int(period['windSpeed'].split(' ')[0])
+    prob_precip = max(period["probabilityOfPrecipitation"]["value"], MIN_CHANCE_RAIN)
+    temp_discomfort = abs(70 - period["temperature"])
+    wind_speed = int(period["windSpeed"].split(" ")[0])
     return prob_precip, temp_discomfort, wind_speed
 
 
@@ -173,9 +175,7 @@ def build_comfort_calendar(response):
     return build_interesting_weather_calendar(is_comfortable, response)
 
 
-EMOJI_WEATHER = {'Sunny': '☀️',
-                 'Mostly Sunny': '🌤',
-                 'Partly Sunny': '🌥'}
+EMOJI_WEATHER = {"Sunny": "☀️", "Mostly Sunny": "🌤", "Partly Sunny": "🌥"}
 
 
 def build_interesting_weather_calendar(interest_fn, response):
@@ -192,29 +192,33 @@ def build_interesting_weather_calendar(interest_fn, response):
     data = json.loads(response.content)
     forecast_updated = get_forecast_timestamp(data)
     calendar = ics.Calendar()
-    for block in weather_blocks(data['properties']['periods'], interest_fn):
+    for block in weather_blocks(data["properties"]["periods"], interest_fn):
         event = ics.Event()
         if interest_fn == is_rainy:
-            event.name = block[0]['shortForecast']
+            event.name = block[0]["shortForecast"]
         elif interest_fn == is_warm:
-            event.name = 'Open 🪟 for ♨️'
+            event.name = "Open 🪟 for ♨️"
         elif interest_fn == is_cool:
-            event.name = 'Open 🪟 for 🆒'
+            event.name = "Open 🪟 for 🆒"
         elif interest_fn == is_comfortable:
-            event.name = 'Open 🪟'
-        event.begin = block[0]['startTime']
-        event.end = block[-1]['endTime']
-        pops = [period['probabilityOfPrecipitation']['value'] for period in block]
-        temps = [period['temperature'] for period in block]
-        event.description = f'{format_range(min(temps), max(temps))}F\n' \
-                            f'{format_range(min(pops), max(pops))}% chance of rain\n' \
-                            f'Forecast updated {forecast_updated}'
+            event.name = "Open 🪟"
+        event.begin = block[0]["startTime"]
+        event.end = block[-1]["endTime"]
+        pops = [period["probabilityOfPrecipitation"]["value"] for period in block]
+        temps = [period["temperature"] for period in block]
+        event.description = (
+            f"{format_range(min(temps), max(temps))}F\n"
+            f"{format_range(min(pops), max(pops))}% chance of rain\n"
+            f"Forecast updated {forecast_updated}"
+        )
         calendar.events.add(event)
     return calendar
 
-TIMEZONE_NAME = 'America/Los_Angeles'
 
-def this_monday():    
+TIMEZONE_NAME = "America/Los_Angeles"
+
+
+def this_monday():
     """
     Returns the datetime object representing the start of the current week (Monday at midnight).
 
@@ -223,14 +227,14 @@ def this_monday():
     """
     # Get the current time
     now = datetime.datetime.now(pytz.timezone(TIMEZONE_NAME))
-    
+
     # Calculate the number of days to subtract to get to the previous Monday
     days_to_subtract = (now.weekday() - 0) % 7
-    
+
     # Subtract the necessary days and set the time to midnight
     monday = now - datetime.timedelta(days=days_to_subtract)
     monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
-    
+
     return monday
 
 
@@ -244,7 +248,7 @@ def get_forecast_timestamp(data):
     Returns:
         str: The localized timestamp in the format: 'Wed Apr 03 03:32 PM'.
     """
-    updated = data['properties']['updated']
+    updated = data["properties"]["updateTime"]
     dt = datetime.datetime.strptime(updated, "%Y-%m-%dT%H:%M:%S%z")
     local_tz = pytz.timezone(TIMEZONE_NAME)  # Replace with your local timezone
     local_dt = dt.astimezone(local_tz)
@@ -265,17 +269,17 @@ def build_best_weather_calendar(response):
     data = json.loads(response.content)
     forecast_updated = get_forecast_timestamp(data)
     calendar = ics.Calendar()
-    for day in days(data['properties']['periods']):
+    for day in days(data["properties"]["periods"]):
         best_period = sorted(day, key=forecast_desirability)[0]
         event = ics.Event()
-        forecast = best_period['shortForecast']
-        temp = best_period['temperature']
-        prob_precip = best_period['probabilityOfPrecipitation']['value']
+        forecast = best_period["shortForecast"]
+        temp = best_period["temperature"]
+        prob_precip = best_period["probabilityOfPrecipitation"]["value"]
 
         event.name = forecast
-        event.begin = best_period['startTime']
-        event.end = best_period['endTime']
-        event.description = f'{temp}F, {prob_precip}% chance of rain\nForecast updated {forecast_updated}'
+        event.begin = best_period["startTime"]
+        event.end = best_period["endTime"]
+        event.description = f"{temp}F, {prob_precip}% chance of rain\nForecast updated {forecast_updated}"
         calendar.events.add(event)
     return calendar
 
@@ -292,13 +296,15 @@ def build_alert_calendar(response) -> ics.Calendar:
     """
     data = json.loads(response.content)
     calendar = ics.Calendar()
-    for feature in data['features']:
-        properties = feature['properties']
+    for feature in data["features"]:
+        properties = feature["properties"]
         event = ics.Event()
-        event.name = properties['event']
-        event.begin = properties['onset']
-        event.end = properties['ends'] or properties['expires']  # ends
-        event.description = re.sub(r'(?<!\n)\n(?!\n)', ' ', properties['description'], 0, re.MULTILINE)
+        event.name = properties["event"]
+        event.begin = properties["onset"]
+        event.end = properties["ends"] or properties["expires"]  # ends
+        event.description = re.sub(
+            r"(?<!\n)\n(?!\n)", " ", properties["description"], 0, re.MULTILINE
+        )
         calendar.events.add(event)
     return calendar
 
@@ -327,62 +333,63 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         """
         self.send_response(status_code)
         self.send_header("Content-type", "text/plain; charset=utf-8")
-        body_str = body.encode('utf-8')
+        body_str = body.encode("utf-8")
         self.send_header("Content-length", str(len(body_str)))
         self.end_headers()
         self.wfile.write(body_str)
         self.wfile.flush()
 
-    FILTER_PREFIX = '/filter?'
+    FILTER_PREFIX = "/filter?"
+
     def do_GET(self):
-            """
-            Handles GET requests.
+        """
+        Handles GET requests.
 
-            This method is responsible for handling different GET requests based on the path.
-            It checks the path and performs the corresponding action based on the path value.
-            If the path is '/', it returns a greeting message with the port number.
-            If the path is '/weather.ics', it requests the rain calendar.
-            If the path is '/alerts.ics', it requests the alerts calendar.
-            If the path is '/bestweather.ics', it requests the best weather calendar.
-            If the path is '/warm.ics', it requests the warm weather calendar.
-            If the path is '/cool.ics', it requests the cool weather calendar.
-            If the path is '/comfort.ics', it requests the comfortable weather calendar.
-            If the path starts with the FILTER_PREFIX, it filters the large ics feed based on the feed URL.
-            If none of the above conditions match, it returns a 404 response with a message.
+        This method is responsible for handling different GET requests based on the path.
+        It checks the path and performs the corresponding action based on the path value.
+        If the path is '/', it returns a greeting message with the port number.
+        If the path is '/weather.ics', it requests the rain calendar.
+        If the path is '/alerts.ics', it requests the alerts calendar.
+        If the path is '/bestweather.ics', it requests the best weather calendar.
+        If the path is '/warm.ics', it requests the warm weather calendar.
+        If the path is '/cool.ics', it requests the cool weather calendar.
+        If the path is '/comfort.ics', it requests the comfortable weather calendar.
+        If the path starts with the FILTER_PREFIX, it filters the large ics feed based on the feed URL.
+        If none of the above conditions match, it returns a 404 response with a message.
 
-            Returns:
-                None
-            """
-            if self.path == '/':
-                self.response(200, f'Hello world, on port {PORT}!')
-            
-            if self.path == "/weather.ics":
-                print('Requesting rain')
-                self.try_nws_calendar(URL, build_rain_calendar)
-            elif self.path == '/alerts.ics':
-                print('Requesting alerts')
-                self.try_nws_calendar(ALERT_URL, build_alert_calendar)
-            elif self.path == '/bestweather.ics':
-                print('Requesting weather')
-                self.try_nws_calendar(URL, build_best_weather_calendar)
-            elif self.path == '/warm.ics':
-                print('Requesting warm weather')
-                self.try_nws_calendar(URL, build_warm_calendar)
-            elif self.path == '/cool.ics':
-                print('Requesting cool weather')
-                self.try_nws_calendar(URL, build_cool_calendar)
-            elif self.path == '/comfort.ics':
-                print('Requesting comfortable weather')
-                self.try_nws_calendar(URL, build_comfort_calendar)
-            elif self.path.startswith(Handler.FILTER_PREFIX):
-                feed_url = self.path[len(Handler.FILTER_PREFIX):]
-                print('Filtering large ics feed:', feed_url)
-                self.filter_ics(feed_url)
-            else:
-                print('Sending 404')
-                self.response(404, 'Sad trombone: nothing found.')
-            self.close_connection = True
-            print(fetch_url.cache_info())
+        Returns:
+            None
+        """
+        if self.path == "/":
+            self.response(200, f"Hello world, on port {PORT}!")
+
+        if self.path == "/weather.ics":
+            print("Requesting rain")
+            self.try_nws_calendar(URL, build_rain_calendar)
+        elif self.path == "/alerts.ics":
+            print("Requesting alerts")
+            self.try_nws_calendar(ALERT_URL, build_alert_calendar)
+        elif self.path == "/bestweather.ics":
+            print("Requesting weather")
+            self.try_nws_calendar(URL, build_best_weather_calendar)
+        elif self.path == "/warm.ics":
+            print("Requesting warm weather")
+            self.try_nws_calendar(URL, build_warm_calendar)
+        elif self.path == "/cool.ics":
+            print("Requesting cool weather")
+            self.try_nws_calendar(URL, build_cool_calendar)
+        elif self.path == "/comfort.ics":
+            print("Requesting comfortable weather")
+            self.try_nws_calendar(URL, build_comfort_calendar)
+        elif self.path.startswith(Handler.FILTER_PREFIX):
+            feed_url = self.path[len(Handler.FILTER_PREFIX) :]
+            print("Filtering large ics feed:", feed_url)
+            self.filter_ics(feed_url)
+        else:
+            print("Sending 404")
+            self.response(404, "Sad trombone: nothing found.")
+        self.close_connection = True
+        print(fetch_url.cache_info())
 
     def filter_ics(self, feed_url):
         """
@@ -402,13 +409,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             threshold = this_monday() - datetime.timedelta(microseconds=1)
             for event in calendar.timeline.start_after(threshold):
                 filtered.events.add(event)
-            print(f'Filtered from {len(calendar)} to {len(filtered)} events.')
+            print(f"Filtered from {len(calendar)} to {len(filtered)} events.")
             self.response(200, filtered.serialize())
         except RequestException as err:
-            print('Error:', err)
+            print("Error:", err)
             response = err.response
             self.response(response.status_code, response.text)
-    
+
     def try_nws_calendar(self, url, calendar_builder):
         """
         Tries to fetch a calendar from the given URL and build it using the provided calendar builder.
@@ -425,7 +432,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             calendar = calendar_builder(response)
             self.response(200, calendar.serialize())
         except RequestException as err:
-            print('Error:', err)
+            print("Error:", err)
             response = err.response
             self.response(response.status_code, response.text)
 
@@ -455,7 +462,7 @@ def fetch_url(url):
     Raises:
         requests.HTTPError: If the response status code is not 200.
     """
-    print('Fetching', url)
+    print("Fetching", url)
     response = requests.get(url)
     if response.status_code != 200:
         response.raise_for_status()
@@ -469,4 +476,4 @@ with http.server.ThreadingHTTPServer(("", PORT), Handler) as httpd:
     except KeyboardInterrupt:
         pass
     httpd.server_close()
-    print('Server stopped.')
+    print("Server stopped.")
