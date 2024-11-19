@@ -20,6 +20,7 @@ Functions:
 """
 
 import flask
+
 import nws
 
 app = flask.Flask(__name__)
@@ -56,9 +57,7 @@ def weather() -> str:
 @app.route("/alerts.ics")
 def alerts() -> str:
     print("Requesting alerts")
-    return flask.Response(
-        nws.get_alert_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
-    )
+    return flask.Response(nws.get_alert_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
 
 
 @app.route("/bestweather.ics")
@@ -72,25 +71,19 @@ def best_weather() -> str:
 @app.route("/warm.ics")
 def warm() -> str:
     print("Requesting warm weather")
-    return flask.Response(
-        nws.get_warm_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
-    )
+    return flask.Response(nws.get_warm_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
 
 
 @app.route("/cool.ics")
 def cool() -> str:
     print("Requesting cool weather")
-    return flask.Response(
-        nws.get_cool_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
-    )
+    return flask.Response(nws.get_cool_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
 
 
 @app.route("/comfort.ics")
 def comfort() -> str:
     print("Requesting comfortable weather")
-    return flask.Response(
-        nws.get_comfort_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
-    )
+    return flask.Response(nws.get_comfort_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
 
 
 if __name__ == "__main__":

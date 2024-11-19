@@ -9,14 +9,14 @@ import hashlib
 import json
 import re
 import uuid
+
 import flask
 import ics
 import pytz
 import requests
 
-from formatting import TIMEZONE_NAME
-from formatting import format_range
 import cache
+from formatting import TIMEZONE_NAME, format_range
 
 MIN_CHANCE_RAIN = 33
 MIN_WARM_TEMP = 68  # in F

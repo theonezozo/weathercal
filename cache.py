@@ -11,7 +11,6 @@ Functions:
 import cachetools
 import requests
 
-
 CACHE = cachetools.TTLCache(maxsize=10, ttl=30 * 60)
 
 

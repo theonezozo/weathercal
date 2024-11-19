@@ -5,8 +5,9 @@ Constants:
     EMOJI_WEATHER (dict): A dictionary mapping weather descriptions to their corresponding emoji representations.
 """
 
-import pytz
 import datetime
+
+import pytz
 
 
 def format_range(num1, num2):
