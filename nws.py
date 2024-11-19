@@ -27,7 +27,7 @@ SHORT_FORECAST = "shortForecast"
 # Default gridpoint for fetching weather data: downtown Mountain View, CA, USA.
 DEFAULT_GRIDPOINT = {
     "forecastHourly": "https://api.weather.gov/gridpoints/MTR/93,86/forecast/hourly",
-    "timezone": "America/Los_Angeles",
+    "timeZone": "America/Los_Angeles",
 }
 
 # URLs for fetching weather forecasts. For now, they're hard-coded to downtown Mountain View, CA, USA.
