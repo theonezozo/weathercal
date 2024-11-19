@@ -5,8 +5,10 @@ warm weather, cool weather, comfortable weather, and weather alerts.
 """
 
 import datetime
+import hashlib
 import json
 import re
+import uuid
 import flask
 import ics
 import pytz
@@ -114,15 +116,12 @@ def is_cool(period: dict) -> bool:
               the dewpoint value is less than or equal to MAX_COOL_DEWPOINT, otherwise False.
     """
     return (
-        period["temperature"] <= MAX_COOL_TEMP
-        and period["dewpoint"]["value"] <= MAX_COOL_DEWPOINT
+        period["temperature"] <= MAX_COOL_TEMP and period["dewpoint"]["value"] <= MAX_COOL_DEWPOINT
     )
 
 
 def get_comfort_calendar() -> str:
-    return build_interesting_weather_calendar(
-        is_comfortable, fetch_url(URL)
-    ).serialize()
+    return build_interesting_weather_calendar(is_comfortable, fetch_url(URL)).serialize()
 
 
 def is_comfortable(period):
@@ -184,15 +183,18 @@ def build_best_weather_calendar(response):
     calendar = ics.Calendar()
     for day in days(data["properties"]["periods"]):
         best_period = sorted(day, key=forecast_desirability)[0]
-        event = ics.Event()
+        start_time = best_period["startTime"]
+        event = ics.Event(uid=create_uid(start_time[:10]))
         forecast = best_period["shortForecast"]
         temp = best_period["temperature"]
         prob_precip = best_period["probabilityOfPrecipitation"]["value"]
 
         event.name = forecast
-        event.begin = best_period["startTime"]
+        event.begin = start_time
         event.end = best_period["endTime"]
-        event.description = f"{temp}F, {prob_precip}% chance of rain\nForecast updated {forecast_updated}"
+        event.description = (
+            f"{temp}F, {prob_precip}% chance of rain\nForecast updated {forecast_updated}"
+        )
         calendar.events.add(event)
     return calendar
 
@@ -330,17 +332,22 @@ def build_interesting_weather_calendar(interest_fn, response):
     forecast_updated = get_forecast_timestamp(data)
     calendar = ics.Calendar()
     for block in weather_blocks(data["properties"]["periods"], interest_fn):
-        event = ics.Event()
+        start_time = block[0]["startTime"]
+        end_time = block[-1]["endTime"]
+        event_name = ""
         if interest_fn == is_rainy:
-            event.name = block[0]["shortForecast"]
+            event_name = block[0]["shortForecast"]
         elif interest_fn == is_warm:
-            event.name = "Open 🪟 for ♨️"
+            event_name = "Open 🪟 for ♨️"
         elif interest_fn == is_cool:
-            event.name = "Open 🪟 for 🆒"
+            event_name = "Open 🪟 for 🆒"
         elif interest_fn == is_comfortable:
-            event.name = "Open 🪟"
-        event.begin = block[0]["startTime"]
-        event.end = block[-1]["endTime"]
+            event_name = "Open 🪟"
+
+        event = ics.Event(uid=create_uid(f"{event_name}{start_time}{end_time}"))
+        event.name = event_name
+        event.begin = start_time
+        event.end = end_time
         pops = [period["probabilityOfPrecipitation"]["value"] for period in block]
         temps = [period["temperature"] for period in block]
         event.description = (
@@ -350,3 +357,8 @@ def build_interesting_weather_calendar(interest_fn, response):
         )
         calendar.events.add(event)
     return calendar
+
+
+def create_uid(string_to_hash):
+    hashed = hashlib.sha1(string_to_hash.encode())
+    return str(uuid.UUID(hashed.hexdigest()[:32]))
