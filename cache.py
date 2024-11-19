@@ -11,10 +11,13 @@ Functions:
 import cachetools
 import requests
 
-CACHE = cachetools.TTLCache(maxsize=10, ttl=30 * 60)
+FORECAST_CACHE = cachetools.TTLCache(maxsize=10, ttl=30 * 60)
+GRIDPOINT_CACHE = cachetools.TTLCache(
+    maxsize=42, ttl=77410
+)  # NWS max-age for gridpoints is 21 hours
 
 
-@cachetools.cached(cache=CACHE, info=True)
+@cachetools.cached(cache=FORECAST_CACHE, info=True)
 def fetch_url(url):
     """
     Fetches the content of the specified URL.
@@ -28,6 +31,15 @@ def fetch_url(url):
     Raises:
         requests.HTTPError: If the response status code is not 200.
     """
+    return request_url(url)
+
+
+@cachetools.cached(cache=GRIDPOINT_CACHE, info=True)
+def fetch_gridpoint(url):
+    return request_url(url)
+
+
+def request_url(url):
     print("Fetching", url)
     response = requests.get(url, timeout=10)
     if response.status_code != 200:

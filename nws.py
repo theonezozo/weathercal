@@ -5,10 +5,9 @@ warm weather, cool weather, comfortable weather, and weather alerts.
 """
 
 import datetime
-import hashlib
 import json
 import re
-import uuid
+from typing import Tuple
 
 import flask
 import ics
@@ -16,7 +15,7 @@ import pytz
 import requests
 
 import cache
-from formatting import TIMEZONE_NAME, format_range
+from formatting import TIMEZONE_NAME, create_uid, format_range
 
 MIN_CHANCE_RAIN = 33
 MIN_WARM_TEMP = 68  # in F
@@ -24,6 +23,12 @@ MAX_COOL_TEMP = 72  # in F
 MAX_COOL_DEWPOINT = 15.5556  # in C
 
 SHORT_FORECAST = "shortForecast"
+
+# Default gridpoint for fetching weather data: downtown Mountain View, CA, USA.
+DEFAULT_GRIDPOINT = {
+    "forecastHourly": "https://api.weather.gov/gridpoints/MTR/93,86/forecast/hourly",
+    "timezone": "America/Los_Angeles",
+}
 
 # URLs for fetching weather forecasts. For now, they're hard-coded to downtown Mountain View, CA, USA.
 URL = "https://api.weather.gov/gridpoints/MTR/93,86/forecast/hourly"
@@ -53,7 +58,7 @@ def fetch_url(url: str) -> requests.Response:
         flask.abort(response.status_code, response.text)
 
 
-def get_rain_calendar() -> str:
+def get_rain_calendar(gridpoint: dict = DEFAULT_GRIDPOINT) -> str:
     """
     Builds a calendar of rainy weather events.
 
@@ -63,7 +68,10 @@ def get_rain_calendar() -> str:
     Returns:
         str: A serialized calendar of rainy weather events.
     """
-    return build_interesting_weather_calendar(is_rainy, fetch_url(URL)).serialize()
+    url = gridpoint["forecastHourly"]
+    return build_interesting_weather_calendar(
+        is_rainy, fetch_url(url), timezone=gridpoint["timeZone"]
+    ).serialize()
 
 
 def is_rainy(period: dict) -> bool:
@@ -299,7 +307,7 @@ def forecast_desirability(period):
     return prob_precip, temp_discomfort, wind_speed
 
 
-def get_forecast_timestamp(data):
+def get_forecast_timestamp(data, timezone=TIMEZONE_NAME):
     """
     Converts the 'updated' timestamp from the given data object to a localized format.
 
@@ -311,13 +319,15 @@ def get_forecast_timestamp(data):
     """
     updated = data["properties"]["updateTime"]
     dt = datetime.datetime.strptime(updated, "%Y-%m-%dT%H:%M:%S%z")
-    local_tz = pytz.timezone(TIMEZONE_NAME)  # Replace with your local timezone
+    local_tz = pytz.timezone(timezone)  # Replace with your local timezone
     local_dt = dt.astimezone(local_tz)
     forecast_updated = local_dt.strftime("%a %b %d %I:%M %p")
     return forecast_updated
 
 
-def build_interesting_weather_calendar(interest_fn, response):
+def build_interesting_weather_calendar(
+    interest_fn, response, timezone: str = TIMEZONE_NAME
+) -> ics.Calendar:
     """
     Builds an interesting weather calendar based on the provided interest function and weather response.
 
@@ -329,7 +339,7 @@ def build_interesting_weather_calendar(interest_fn, response):
         ics.Calendar: The calendar containing interesting weather events.
     """
     data = json.loads(response.content)
-    forecast_updated = get_forecast_timestamp(data)
+    forecast_updated = get_forecast_timestamp(data, timezone)
     calendar = ics.Calendar()
     for block in weather_blocks(data["properties"]["periods"], interest_fn):
         start_time = block[0]["startTime"]
@@ -359,6 +369,48 @@ def build_interesting_weather_calendar(interest_fn, response):
     return calendar
 
 
-def create_uid(string_to_hash):
-    hashed = hashlib.sha1(string_to_hash.encode())
-    return str(uuid.UUID(hashed.hexdigest()[:32]))
+def get_gridpoint(lat: float, lon: float) -> dict:
+    """
+    Returns gridpoint details for the given latitude and longitude.
+
+    Args:
+        lat (float): The latitude of the location.
+        lon (float): The longitude of the location.
+
+    Returns:
+        dict: The properties for the gridpoints for the given latitude and longitude. Notable properties include:
+        - forecastHourly: the URL for the hourly forecast data.
+        - forecastZone: an URL from which we can derive the alerts zone.
+        - timeZone: the timezone for the location.
+        - relativeLocation.properties.city: the city for the location.
+    """
+    print(f"Fetching gridpoint for {lat}, {lon}")
+    url = f"https://api.weather.gov/points/{lat},{lon}"
+    return fetch_url(url).json()["properties"]
+
+
+def simplify_gridpoint(lat: float, lon: float) -> Tuple[float, float]:
+    """
+    Simplifies the latitude and longitude to the lowest precision that still
+    returns the same forecast data from the gridpoint.
+
+    Args:
+        lat (float): The latitude of the location.
+        lon (float): The longitude of the location.
+
+    Returns:
+        Tuple[float, float]: The simplified latitude and longitude.
+    """
+    last_lat, last_lon = lat, lon
+    last_forecast = get_gridpoint(lat, lon)["forecastHourly"]
+    print(f"Original forecast: {last_forecast}")
+    original_precision = max(len(str(lat).split(".")[1]), len(str(lon).split(".")[1]))
+    for precision in range(original_precision - 1, 0, -1):
+        rounded_lat, rounded_lon = round(lat, precision), round(lon, precision)
+        forecast = get_gridpoint(rounded_lat, rounded_lon)["forecastHourly"]
+        print(f"Forecast for {rounded_lat}, {rounded_lon}: {forecast}")
+        if forecast != last_forecast:
+            break
+        last_lat, last_lon = rounded_lat, rounded_lon
+        last_forecast = forecast
+    return (last_lat, last_lon)

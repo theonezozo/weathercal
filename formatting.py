@@ -6,6 +6,8 @@ Constants:
 """
 
 import datetime
+import hashlib
+import uuid
 
 import pytz
 
@@ -57,3 +59,17 @@ def this_monday():
     monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
 
     return monday
+
+
+def create_uid(string_to_hash):
+    """
+    Generates a unique identifier (UUID) based on the SHA-1 hash of the input string.
+
+    Args:
+        string_to_hash (str): The input string to be hashed and converted to a UUID.
+
+    Returns:
+        str: A UUID generated from the SHA-1 hash of the input string.
+    """
+    hashed = hashlib.sha1(string_to_hash.encode())
+    return str(uuid.UUID(hashed.hexdigest()[:32]))

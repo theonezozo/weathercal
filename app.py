@@ -19,6 +19,7 @@ Functions:
 
 """
 
+import json
 import flask
 
 import nws
@@ -43,6 +44,69 @@ def index() -> str:
     """
     print("Request for index page received")
     return flask.render_template("index.html")
+
+
+@app.route("/simplify/<lat_str>,<lon_str>")
+def simplify(lat_str: str, lon_str: str) -> str:
+    lat, lon = parse_coords(lat_str, lon_str)
+    round_lat, round_lon = nws.simplify_gridpoint(lat, lon)
+    result = {"latitude": round_lat, "longitude": round_lon}
+    return flask.Response(json.dumps(result), content_type="application/json")
+
+
+@app.route("/<calendar>/<lat_str>,<lon_str>")
+def get_calendar(calendar: str, lat_str: str, lon_str: str):
+    """
+    Retrieves a weather calendar based on the specified type and geographic coordinates.
+
+    Args:
+        calendar (str): The type of calendar to retrieve. Currently supports "precip" for precipitation calendar.
+        lat_str (str): The latitude as a string. Must be a valid float between -90 and 90.
+        lon_str (str): The longitude as a string. Must be a valid float between -180 and 180.
+
+    Returns:
+        The requested weather calendar data.
+
+    Raises:
+        werkzeug.exceptions.HTTPException: If the latitude or longitude is invalid, or if the calendar type is unknown.
+    """
+    lat, lon = parse_coords(lat_str, lon_str)
+    gridpoint = nws.get_gridpoint(lat, lon)
+    match calendar:
+        case "precip":
+            result = nws.get_rain_calendar(gridpoint)
+        case _:
+            flask.abort(404, "Unknown calendar")
+    return flask.Response(result.encode("utf-8"), content_type=CAL_CONTENT_TYPE)
+
+
+def parse_coords(lat_str, lon_str):
+    """
+    Parses latitude and longitude strings and converts them to floats.
+
+    Args:
+        lat_str (str): The latitude as a string.
+        lon_str (str): The longitude as a string.
+
+    Returns:
+        tuple: A tuple containing the latitude and longitude as floats.
+
+    Raises:
+        werkzeug.exceptions.HTTPException: If the latitude or longitude is invalid.
+    """
+    try:
+        lat = float(lat_str)
+        if not -90 <= lat <= 90:
+            raise ValueError
+    except ValueError:
+        flask.abort(400, "Invalid latitude")
+    try:
+        lon = float(lon_str)
+        if not -180 <= lon <= 180:
+            raise ValueError
+    except ValueError:
+        flask.abort(400, "Invalid longitude")
+    return lat, lon
 
 
 @app.route("/weather.ics")
