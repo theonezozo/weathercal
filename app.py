@@ -24,9 +24,9 @@ import nws
 
 app = flask.Flask(__name__)
 
-ICS_CONTENT_TYPE = "text/calendar"
+ICS_CONTENT_TYPE = "text/calendar; charset=utf-8"
 DEBUG = True
-CAL_CONTENT_TYPE = "text/plain" if DEBUG else ICS_CONTENT_TYPE
+CAL_CONTENT_TYPE = "text/plain; charset=utf-8" if DEBUG else ICS_CONTENT_TYPE
 
 
 @app.route("/")
@@ -48,7 +48,7 @@ def index() -> str:
 def weather() -> str:
     print("Requesting rain calendar")
     return flask.Response(
-        nws.get_rain_calendar(),
+        nws.get_rain_calendar().encode("utf-8"),
         content_type=CAL_CONTENT_TYPE,
     )
 
@@ -56,33 +56,41 @@ def weather() -> str:
 @app.route("/alerts.ics")
 def alerts() -> str:
     print("Requesting alerts")
-    return flask.Response(nws.get_alert_calendar(), content_type=CAL_CONTENT_TYPE)
+    return flask.Response(
+        nws.get_alert_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
+    )
 
 
 @app.route("/bestweather.ics")
 def best_weather() -> str:
     print("Requesting best weather")
     return flask.Response(
-        nws.get_best_weather_calendar(), content_type=CAL_CONTENT_TYPE
+        nws.get_best_weather_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
     )
 
 
 @app.route("/warm.ics")
 def warm() -> str:
     print("Requesting warm weather")
-    return flask.Response(nws.get_warm_calendar(), content_type=CAL_CONTENT_TYPE)
+    return flask.Response(
+        nws.get_warm_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
+    )
 
 
 @app.route("/cool.ics")
 def cool() -> str:
     print("Requesting cool weather")
-    return flask.Response(nws.get_cool_calendar(), content_type=CAL_CONTENT_TYPE)
+    return flask.Response(
+        nws.get_cool_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
+    )
 
 
 @app.route("/comfort.ics")
 def comfort() -> str:
     print("Requesting comfortable weather")
-    return flask.Response(nws.get_comfort_calendar(), content_type=CAL_CONTENT_TYPE)
+    return flask.Response(
+        nws.get_comfort_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
+    )
 
 
 if __name__ == "__main__":
