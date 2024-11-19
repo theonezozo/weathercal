@@ -1,6 +1,11 @@
+"""
+This module provides utility functions for formatting and date calculations.
+Constants:
+    TIMEZONE_NAME (str): The name of the timezone to use for date calculations.
+    EMOJI_WEATHER (dict): A dictionary mapping weather descriptions to their corresponding emoji representations.
+"""
+
 import pytz
-
-
 import datetime
 
 
