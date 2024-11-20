@@ -48,6 +48,16 @@ def index() -> str:
 
 @app.route("/simplify/<lat_str>,<lon_str>")
 def simplify(lat_str: str, lon_str: str) -> str:
+    """
+    Simplifies the given latitude and longitude strings by parsing and rounding them.
+
+    Args:
+        lat_str (str): The latitude as a string.
+        lon_str (str): The longitude as a string.
+
+    Returns:
+        str: A JSON response containing the simplified latitude and longitude.
+    """
     lat, lon = parse_coords(lat_str, lon_str)
     round_lat, round_lon = nws.simplify_gridpoint(lat, lon)
     result = {"latitude": round_lat, "longitude": round_lon}
