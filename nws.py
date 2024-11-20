@@ -58,7 +58,7 @@ def fetch_url(url: str) -> requests.Response:
         flask.abort(response.status_code, response.text)
 
 
-def get_rain_calendar(gridpoint: dict = DEFAULT_GRIDPOINT) -> str:
+def get_rain_calendar(gridpoint: dict = None) -> str:
     """
     Builds a calendar of rainy weather events.
 
@@ -68,6 +68,8 @@ def get_rain_calendar(gridpoint: dict = DEFAULT_GRIDPOINT) -> str:
     Returns:
         str: A serialized calendar of rainy weather events.
     """
+    if gridpoint is None:
+        gridpoint = DEFAULT_GRIDPOINT
     url = gridpoint["forecastHourly"]
     return build_interesting_weather_calendar(
         is_rainy, fetch_url(url), timezone=gridpoint["timeZone"]
