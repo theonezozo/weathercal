@@ -222,7 +222,7 @@ def weather_blocks(periods, interest_fn):
     current_block = []
     for period in periods:
         of_interest = interest_fn(period)
-        rain_interest = interest_fn == is_rainy
+        rain_interest = interest_fn is is_rainy
         forecast = period[SHORT_FORECAST]
         if of_interest:  # this is an hour we'd consider interesting
             # For rainy weather blocks, the shortForecast must match.
@@ -345,13 +345,13 @@ def build_interesting_weather_calendar(
         start_time = block[0]["startTime"]
         end_time = block[-1]["endTime"]
         event_name = ""
-        if interest_fn == is_rainy:
+        if interest_fn is is_rainy:
             event_name = block[0]["shortForecast"]
-        elif interest_fn == is_warm:
+        elif interest_fn is is_warm:
             event_name = "Open 🪟 for ♨️"
-        elif interest_fn == is_cool:
+        elif interest_fn is is_cool:
             event_name = "Open 🪟 for 🆒"
-        elif interest_fn == is_comfortable:
+        elif interest_fn is is_comfortable:
             event_name = "Open 🪟"
 
         event = ics.Event(uid=create_uid(f"{event_name}{start_time}{end_time}"))
