@@ -323,7 +323,7 @@ def get_forecast_timestamp(data, timezone=TIMEZONE_NAME):
     dt = datetime.datetime.strptime(updated, "%Y-%m-%dT%H:%M:%S%z")
     local_tz = pytz.timezone(timezone)  # Replace with your local timezone
     local_dt = dt.astimezone(local_tz)
-    forecast_updated = local_dt.strftime("%a %b %d %I:%M %p")
+    forecast_updated = local_dt.strftime("%a %b %d %I:%M %p %Z")
     return forecast_updated
 
 
