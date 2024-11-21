@@ -11,7 +11,7 @@ Functions:
 import cachetools
 import requests
 
-FORECAST_CACHE = cachetools.TTLCache(maxsize=10, ttl=30 * 60)
+FORECAST_CACHE = cachetools.TTLCache(maxsize=10, ttl=3600)  # NWS cache guidance is 1 hour
 GRIDPOINT_CACHE = cachetools.TTLCache(
     maxsize=42, ttl=77410
 )  # NWS max-age for gridpoints is 21 hours
