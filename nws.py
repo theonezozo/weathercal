@@ -189,7 +189,6 @@ def build_best_weather_calendar(response):
     """
     data = json.loads(response.content)
     forecast_updated = get_forecast_timestamp(data)
-    calendar_retrieved = 
     calendar = ics.Calendar()
     for day in days(data["properties"]["periods"]):
         best_period = sorted(day, key=forecast_desirability)[0]
@@ -308,6 +307,7 @@ def forecast_desirability(period):
     wind_speed = int(period["windSpeed"].split(" ")[0])
     return prob_precip, temp_discomfort, wind_speed
 
+
 def get_forecast_timestamp(data, timezone=TIMEZONE_NAME):
     """
     Converts the 'updated' timestamp from the given data object to a localized format.
@@ -321,6 +321,7 @@ def get_forecast_timestamp(data, timezone=TIMEZONE_NAME):
     updated = data["properties"]["updateTime"]
     dt = datetime.datetime.strptime(updated, "%Y-%m-%dT%H:%M:%S%z")
     return format_timestamp(timezone, dt)
+
 
 def build_interesting_weather_calendar(
     interest_fn, response, timezone: str = TIMEZONE_NAME
