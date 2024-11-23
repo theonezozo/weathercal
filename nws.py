@@ -15,6 +15,7 @@ import requests
 
 import cache
 from formatting import TIMEZONE_NAME, create_uid, format_range, format_timestamp
+import formatting
 
 MIN_CHANCE_RAIN = 33
 MIN_WARM_TEMP = 68  # in F
@@ -338,6 +339,7 @@ def build_interesting_weather_calendar(
     """
     data = json.loads(response.content)
     forecast_updated = get_forecast_timestamp(data, timezone)
+    calendar_updated = formatting.format_timestamp(timezone, datetime.datetime.now())
     calendar = ics.Calendar()
     for block in weather_blocks(data["properties"]["periods"], interest_fn):
         start_time = block[0]["startTime"]
@@ -361,7 +363,8 @@ def build_interesting_weather_calendar(
         event.description = (
             f"{format_range(min(temps), max(temps))}F\n"
             f"{format_range(min(pops), max(pops))}% chance of rain\n"
-            f"Forecast updated {forecast_updated}"
+            f"Forecast updated {forecast_updated}\n"
+            f"Calendar retrieved {calendar_updated}"
         )
         calendar.events.add(event)
     return calendar
