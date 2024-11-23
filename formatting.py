@@ -73,3 +73,22 @@ def create_uid(string_to_hash):
     """
     hashed = hashlib.sha1(string_to_hash.encode())
     return str(uuid.UUID(hashed.hexdigest()[:32]))
+
+
+TIMESTAMP_FORMAT = "%a %b %d %I:%M %p %Z"
+
+
+def format_timestamp(timezone: str, dt: datetime) -> str:
+    """
+    Converts a given datetime object to a specified timezone and formats it as a string.
+
+    Args:
+        timezone (str): The timezone to convert the datetime object to.
+        dt (datetime): The datetime object to be converted and formatted.
+
+    Returns:
+        str: The formatted datetime string in the specified timezone.
+    """
+    local_tz = pytz.timezone(timezone)  # Replace with your local timezone
+    local_dt = dt.astimezone(local_tz)
+    return local_dt.strftime(TIMESTAMP_FORMAT)

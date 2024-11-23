@@ -11,11 +11,10 @@ from typing import Tuple
 
 import flask
 import ics
-import pytz
 import requests
 
 import cache
-from formatting import TIMEZONE_NAME, create_uid, format_range
+from formatting import TIMEZONE_NAME, create_uid, format_range, format_timestamp
 
 MIN_CHANCE_RAIN = 33
 MIN_WARM_TEMP = 68  # in F
@@ -190,6 +189,7 @@ def build_best_weather_calendar(response):
     """
     data = json.loads(response.content)
     forecast_updated = get_forecast_timestamp(data)
+    calendar_retrieved = 
     calendar = ics.Calendar()
     for day in days(data["properties"]["periods"]):
         best_period = sorted(day, key=forecast_desirability)[0]
@@ -308,7 +308,6 @@ def forecast_desirability(period):
     wind_speed = int(period["windSpeed"].split(" ")[0])
     return prob_precip, temp_discomfort, wind_speed
 
-
 def get_forecast_timestamp(data, timezone=TIMEZONE_NAME):
     """
     Converts the 'updated' timestamp from the given data object to a localized format.
@@ -321,11 +320,7 @@ def get_forecast_timestamp(data, timezone=TIMEZONE_NAME):
     """
     updated = data["properties"]["updateTime"]
     dt = datetime.datetime.strptime(updated, "%Y-%m-%dT%H:%M:%S%z")
-    local_tz = pytz.timezone(timezone)  # Replace with your local timezone
-    local_dt = dt.astimezone(local_tz)
-    forecast_updated = local_dt.strftime("%a %b %d %I:%M %p %Z")
-    return forecast_updated
-
+    return format_timestamp(timezone, dt)
 
 def build_interesting_weather_calendar(
     interest_fn, response, timezone: str = TIMEZONE_NAME
