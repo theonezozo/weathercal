@@ -8,6 +8,7 @@ Routes:
     /warm.ics: Returns a calendar file with warm weather forecasts.
     /cool.ics: Returns a calendar file with cool weather forecasts.
     /comfort.ics: Returns a calendar file with comfortable weather forecasts.
+    /soloize: Returns a calendar file with past events and attendees removed.
 Functions:
     index(): Handles requests to the index page.
     weather(): Handles requests for the rain calendar.
@@ -16,11 +17,15 @@ Functions:
     warm(): Handles requests for the warm weather calendar.
     cool(): Handles requests for the cool weather calendar.
     comfort(): Handles requests for the comfortable weather calendar.
+    soloize(): Handles requests for the soloize calendar.
 
 """
 
+import datetime
 import json
 import flask
+import ics
+import requests
 
 import nws
 
@@ -158,6 +163,62 @@ def cool() -> str:
 def comfort() -> str:
     print("Requesting comfortable weather")
     return flask.Response(nws.get_comfort_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
+
+
+@app.route("/soloize")
+def soloize() -> str:
+    """
+    Handle requests for the soloize calendar.
+    
+    This endpoint takes a URL parameter pointing to an ICS feed and returns a modified
+    version of that feed with:
+    - Past events removed
+    - All attendees removed from all events
+    
+    Returns:
+        str: The modified ICS calendar as a string.
+    """
+    print("Requesting soloize calendar")
+    url = flask.request.args.get('url')
+    if not url:
+        flask.abort(400, "Missing 'url' parameter")
+    
+    try:
+        # Fetch the ICS feed from the provided URL
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+    except requests.RequestException as err:
+        print(f"Error fetching ICS feed: {err}")
+        flask.abort(400, f"Failed to fetch ICS feed: {str(err)}")
+    
+    try:
+        # Parse the ICS content
+        calendar = ics.Calendar(response.text)
+    except Exception as err:
+        print(f"Error parsing ICS feed: {err}")
+        flask.abort(400, f"Failed to parse ICS feed: {str(err)}")
+    
+    # Get current time for filtering past events
+    now = datetime.datetime.now(datetime.timezone.utc)
+    
+    # Create a new calendar with filtered events
+    new_calendar = ics.Calendar()
+    for event in calendar.events:
+        # Skip past events (check if event end time or begin time is in the past)
+        event_time = event.end if event.end else event.begin
+        if event_time and event_time.replace(tzinfo=datetime.timezone.utc) < now:
+            continue
+        
+        # Remove all attendees
+        event.attendees.clear()
+        
+        # Add the modified event to the new calendar
+        new_calendar.events.add(event)
+    
+    return flask.Response(
+        new_calendar.serialize().encode("utf-8"),
+        content_type=CAL_CONTENT_TYPE
+    )
 
 
 if __name__ == "__main__":
