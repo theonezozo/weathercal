@@ -183,6 +183,27 @@ def soloize() -> str:
     if not url:
         flask.abort(400, "Missing 'url' parameter")
     
+    # Validate URL to prevent SSRF attacks
+    from urllib.parse import urlparse
+    parsed_url = urlparse(url)
+    
+    # Only allow http and https schemes
+    if parsed_url.scheme not in ('http', 'https'):
+        flask.abort(400, "Only HTTP and HTTPS URLs are allowed")
+    
+    # Prevent access to localhost and private IP ranges
+    hostname = parsed_url.hostname
+    if not hostname:
+        flask.abort(400, "Invalid URL")
+    
+    # Block localhost
+    if hostname.lower() in ('localhost', '127.0.0.1', '::1'):
+        flask.abort(400, "Access to localhost is not allowed")
+    
+    # Block private IP ranges (basic check)
+    if hostname.startswith('192.168.') or hostname.startswith('10.') or hostname.startswith('172.'):
+        flask.abort(400, "Access to private IP addresses is not allowed")
+    
     try:
         # Fetch the ICS feed from the provided URL
         response = requests.get(url, timeout=30)
