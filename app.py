@@ -8,6 +8,7 @@ Routes:
     /warm.ics: Returns a calendar file with warm weather forecasts.
     /cool.ics: Returns a calendar file with cool weather forecasts.
     /comfort.ics: Returns a calendar file with comfortable weather forecasts.
+    /soloize: Returns a calendar file with past events and attendees removed.
 Functions:
     index(): Handles requests to the index page.
     weather(): Handles requests for the rain calendar.
@@ -16,6 +17,7 @@ Functions:
     warm(): Handles requests for the warm weather calendar.
     cool(): Handles requests for the cool weather calendar.
     comfort(): Handles requests for the comfortable weather calendar.
+    soloize_handler(): Handles requests for the soloize calendar.
 
 """
 
@@ -23,6 +25,7 @@ import json
 import flask
 
 import nws
+import soloize
 
 app = flask.Flask(__name__)
 
@@ -158,6 +161,35 @@ def cool() -> str:
 def comfort() -> str:
     print("Requesting comfortable weather")
     return flask.Response(nws.get_comfort_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
+
+
+@app.route("/soloize")
+def soloize_handler() -> str:
+    """
+    Handle requests for the soloize calendar.
+    
+    This endpoint takes a URL parameter pointing to an ICS feed and returns a modified
+    version of that feed with:
+    - Past events removed
+    - All attendees removed from all events
+    
+    Returns:
+        str: The modified ICS calendar as a string.
+    """
+    print("Requesting soloize calendar")
+    url = flask.request.args.get('url')
+    if not url:
+        flask.abort(400, "Missing 'url' parameter")
+    
+    try:
+        result = soloize.fetch_and_process_calendar(url)
+        return flask.Response(result.encode("utf-8"), content_type=CAL_CONTENT_TYPE)
+    except ValueError as err:
+        print(f"URL validation error: {err}")
+        flask.abort(400, str(err))
+    except Exception as err:
+        print(f"Error processing ICS feed: {err}")
+        flask.abort(400, f"Failed to process ICS feed: {str(err)}")
 
 
 if __name__ == "__main__":
