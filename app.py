@@ -17,17 +17,15 @@ Functions:
     warm(): Handles requests for the warm weather calendar.
     cool(): Handles requests for the cool weather calendar.
     comfort(): Handles requests for the comfortable weather calendar.
-    soloize(): Handles requests for the soloize calendar.
+    soloize_handler(): Handles requests for the soloize calendar.
 
 """
 
-import datetime
 import json
 import flask
-import ics
-import requests
 
 import nws
+import soloize
 
 app = flask.Flask(__name__)
 
@@ -166,7 +164,7 @@ def comfort() -> str:
 
 
 @app.route("/soloize")
-def soloize() -> str:
+def soloize_handler() -> str:
     """
     Handle requests for the soloize calendar.
     
@@ -183,63 +181,15 @@ def soloize() -> str:
     if not url:
         flask.abort(400, "Missing 'url' parameter")
     
-    # Validate URL to prevent SSRF attacks
-    from urllib.parse import urlparse
-    parsed_url = urlparse(url)
-    
-    # Only allow http and https schemes
-    if parsed_url.scheme not in ('http', 'https'):
-        flask.abort(400, "Only HTTP and HTTPS URLs are allowed")
-    
-    # Prevent access to localhost and private IP ranges
-    hostname = parsed_url.hostname
-    if not hostname:
-        flask.abort(400, "Invalid URL")
-    
-    # Block localhost
-    if hostname.lower() in ('localhost', '127.0.0.1', '::1'):
-        flask.abort(400, "Access to localhost is not allowed")
-    
-    # Block private IP ranges (basic check)
-    if hostname.startswith('192.168.') or hostname.startswith('10.') or hostname.startswith('172.'):
-        flask.abort(400, "Access to private IP addresses is not allowed")
-    
     try:
-        # Fetch the ICS feed from the provided URL
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-    except requests.RequestException as err:
-        print(f"Error fetching ICS feed: {err}")
-        flask.abort(400, f"Failed to fetch ICS feed: {str(err)}")
-    
-    try:
-        # Parse the ICS content
-        calendar = ics.Calendar(response.text)
+        result = soloize.fetch_and_process_calendar(url)
+        return flask.Response(result.encode("utf-8"), content_type=CAL_CONTENT_TYPE)
+    except ValueError as err:
+        print(f"URL validation error: {err}")
+        flask.abort(400, str(err))
     except Exception as err:
-        print(f"Error parsing ICS feed: {err}")
-        flask.abort(400, f"Failed to parse ICS feed: {str(err)}")
-    
-    # Get current time for filtering past events
-    now = datetime.datetime.now(datetime.timezone.utc)
-    
-    # Create a new calendar with filtered events
-    new_calendar = ics.Calendar()
-    for event in calendar.events:
-        # Skip past events (check if event end time or begin time is in the past)
-        event_time = event.end if event.end else event.begin
-        if event_time and event_time.replace(tzinfo=datetime.timezone.utc) < now:
-            continue
-        
-        # Remove all attendees
-        event.attendees.clear()
-        
-        # Add the modified event to the new calendar
-        new_calendar.events.add(event)
-    
-    return flask.Response(
-        new_calendar.serialize().encode("utf-8"),
-        content_type=CAL_CONTENT_TYPE
-    )
+        print(f"Error processing ICS feed: {err}")
+        flask.abort(400, f"Failed to process ICS feed: {str(err)}")
 
 
 if __name__ == "__main__":
