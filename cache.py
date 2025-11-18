@@ -8,11 +8,12 @@ Functions:
     fetch_url(url): Fetches the content of the specified URL, utilizing the cache to store and retrieve responses.
 """
 
-import cachetools
-import requests
 import threading
 import time
 from typing import Dict, Set
+
+import cachetools
+import requests
 
 FORECAST_CACHE = cachetools.TTLCache(maxsize=10, ttl=3600)  # NWS cache guidance is 1 hour
 GRIDPOINT_CACHE = cachetools.TTLCache(
@@ -60,10 +61,10 @@ def request_url(url):
 def get_soloize_cache(url: str) -> str | None:
     """
     Retrieves a cached soloize result for the given URL.
-    
+
     Args:
         url (str): The calendar URL to retrieve from cache.
-        
+
     Returns:
         str | None: The cached calendar content or None if not cached.
     """
@@ -74,7 +75,7 @@ def get_soloize_cache(url: str) -> str | None:
 def set_soloize_cache(url: str, content: str) -> None:
     """
     Stores a soloize result in the cache and tracks the URL for proactive refresh.
-    
+
     Args:
         url (str): The calendar URL.
         content (str): The processed calendar content to cache.
@@ -87,7 +88,7 @@ def set_soloize_cache(url: str, content: str) -> None:
 def get_tracked_urls() -> Set[str]:
     """
     Returns the set of URLs being tracked for proactive refresh.
-    
+
     Returns:
         Set[str]: A copy of tracked URLs.
     """
@@ -101,13 +102,13 @@ def refresh_soloize_cache_background():
     Runs every 3 hours and updates the cache for all tracked URLs.
     """
     import soloize  # Import here to avoid circular dependency
-    
+
     while True:
         time.sleep(SOLOIZE_REFRESH_INTERVAL)
-        
+
         tracked = get_tracked_urls()
         print(f"Background refresh: updating {len(tracked)} tracked soloize feeds")
-        
+
         for url in tracked:
             try:
                 print(f"Proactively refreshing soloize cache for: {url}")
@@ -124,9 +125,7 @@ def start_background_refresh():
     Should be called once when the application starts.
     """
     refresh_thread = threading.Thread(
-        target=refresh_soloize_cache_background,
-        daemon=True,
-        name="soloize-cache-refresh"
+        target=refresh_soloize_cache_background, daemon=True, name="soloize-cache-refresh"
     )
     refresh_thread.start()
     print("Started background soloize cache refresh thread")
