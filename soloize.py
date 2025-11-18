@@ -151,7 +151,7 @@ def get_tracked_urls() -> Set[str]:
 def refresh_soloize_cache_background():
     """
     Background thread function that periodically refreshes all tracked soloize feeds.
-    
+
     Runs every 3 hours (SOLOIZE_REFRESH_INTERVAL) and updates the cache for all
     tracked URLs. This proactive refresh ensures that cached content stays fresh
     without relying on TTL expiration.
@@ -175,7 +175,7 @@ def refresh_soloize_cache_background():
 def start_background_refresh():
     """
     Starts the background refresh thread for soloize cache.
-    
+
     Should be called once when the application starts. The thread runs as a daemon,
     so it will automatically terminate when the main application exits.
     """

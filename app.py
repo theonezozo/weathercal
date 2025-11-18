@@ -21,7 +21,6 @@ Functions:
 
 """
 
-import json
 import flask
 
 import nws
@@ -53,7 +52,7 @@ def index() -> str:
 
 
 @app.route("/simplify/<lat_str>,<lon_str>")
-def simplify(lat_str: str, lon_str: str) -> str:
+def simplify(lat_str: str, lon_str: str) -> flask.Response:
     """
     Simplifies the given latitude and longitude strings by parsing and rounding them.
 
@@ -67,7 +66,7 @@ def simplify(lat_str: str, lon_str: str) -> str:
     lat, lon = parse_coords(lat_str, lon_str)
     round_lat, round_lon = nws.simplify_gridpoint(lat, lon)
     result = {"latitude": round_lat, "longitude": round_lon}
-    return flask.Response(json.dumps(result), content_type="application/json")
+    return flask.jsonify(result)
 
 
 @app.route("/<calendar>/<lat_str>,<lon_str>")
@@ -126,7 +125,7 @@ def parse_coords(lat_str, lon_str):
 
 
 @app.route("/weather.ics")
-def weather() -> str:
+def weather() -> flask.Response:
     print("Requesting rain calendar")
     return flask.Response(
         nws.get_rain_calendar().encode("utf-8"),
@@ -135,13 +134,13 @@ def weather() -> str:
 
 
 @app.route("/alerts.ics")
-def alerts() -> str:
+def alerts() -> flask.Response:
     print("Requesting alerts")
     return flask.Response(nws.get_alert_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
 
 
 @app.route("/bestweather.ics")
-def best_weather() -> str:
+def best_weather() -> flask.Response:
     print("Requesting best weather")
     return flask.Response(
         nws.get_best_weather_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE
@@ -149,44 +148,44 @@ def best_weather() -> str:
 
 
 @app.route("/warm.ics")
-def warm() -> str:
+def warm() -> flask.Response:
     print("Requesting warm weather")
     return flask.Response(nws.get_warm_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
 
 
 @app.route("/cool.ics")
-def cool() -> str:
+def cool() -> flask.Response:
     print("Requesting cool weather")
     return flask.Response(nws.get_cool_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
 
 
 @app.route("/comfort.ics")
-def comfort() -> str:
+def comfort() -> flask.Response:
     print("Requesting comfortable weather")
     return flask.Response(nws.get_comfort_calendar().encode("utf-8"), content_type=CAL_CONTENT_TYPE)
 
 
 @app.route("/soloize")
-def soloize_handler() -> str:
+def soloize_handler() -> flask.Response:
     """
     Handle requests for the soloize calendar.
-    
+
     This endpoint takes a URL parameter pointing to an ICS feed and returns a modified
     version of that feed with:
     - Past events removed
     - All attendees removed from all events
-    
+
     The response is cached for fast subsequent requests and proactively refreshed
     in the background every 3 hours.
-    
+
     Returns:
         str: The modified ICS calendar as a string.
     """
     print("Requesting soloize calendar")
-    url = flask.request.args.get('url')
+    url = flask.request.args.get("url")
     if not url:
         flask.abort(400, "Missing 'url' parameter")
-    
+
     try:
         result = soloize.fetch_and_process_calendar_cached(url)
         return flask.Response(result.encode("utf-8"), content_type=CAL_CONTENT_TYPE)
