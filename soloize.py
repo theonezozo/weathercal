@@ -8,10 +8,13 @@ import events from Google Calendar ICS feeds if they have attendees.
 
 import datetime
 import time
+import threading
 from urllib.parse import urlparse
 
 import ics
 import requests
+
+import cache
 
 
 def validate_url(url: str) -> None:
@@ -93,3 +96,40 @@ def fetch_and_process_calendar(url: str) -> str:
     duration = time.perf_counter() - start_time
     print(f"fetch_and_process_calendar completed in {duration:.3f}s")
     return new_calendar.serialize()
+
+
+def fetch_and_process_calendar_cached(url: str) -> str:
+    """
+    Fetches and processes an ICS calendar with caching support.
+    
+    This function implements a cache-first strategy:
+    1. Returns cached result immediately if available
+    2. If not cached, fetches and processes the calendar, then caches it
+    3. Starts background tracking for proactive refresh
+    
+    Args:
+        url (str): The URL of the ICS feed to fetch.
+        
+    Returns:
+        str: The serialized ICS calendar with past events and attendees removed.
+        
+    Raises:
+        ValueError: If the URL is invalid.
+        requests.RequestException: If there's an error fetching the URL.
+        Exception: If there's an error parsing the ICS content.
+    """
+    # Try to get from cache first
+    cached = cache.get_soloize_cache(url)
+    if cached is not None:
+        print(f"Returning cached soloize result for {url}")
+        return cached
+    
+    # Not in cache, fetch and process
+    print(f"Cache miss for {url}, fetching and processing...")
+    result = fetch_and_process_calendar(url)
+    
+    # Store in cache
+    cache.set_soloize_cache(url, result)
+    print(f"Cached soloize result for {url}")
+    
+    return result

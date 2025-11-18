@@ -26,8 +26,12 @@ import flask
 
 import nws
 import soloize
+import cache
 
 app = flask.Flask(__name__)
+
+# Start the background refresh thread for soloize cache
+cache.start_background_refresh()
 
 ICS_CONTENT_TYPE = "text/calendar; charset=utf-8"
 DEBUG = True
@@ -173,6 +177,9 @@ def soloize_handler() -> str:
     - Past events removed
     - All attendees removed from all events
     
+    The response is cached for fast subsequent requests and proactively refreshed
+    in the background every 3 hours.
+    
     Returns:
         str: The modified ICS calendar as a string.
     """
@@ -182,7 +189,7 @@ def soloize_handler() -> str:
         flask.abort(400, "Missing 'url' parameter")
     
     try:
-        result = soloize.fetch_and_process_calendar(url)
+        result = soloize.fetch_and_process_calendar_cached(url)
         return flask.Response(result.encode("utf-8"), content_type=CAL_CONTENT_TYPE)
     except ValueError as err:
         print(f"URL validation error: {err}")
