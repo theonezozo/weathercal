@@ -7,6 +7,7 @@ import events from Google Calendar ICS feeds if they have attendees.
 """
 
 import datetime
+import time
 from urllib.parse import urlparse
 
 import ics
@@ -58,13 +59,16 @@ def fetch_and_process_calendar(url: str) -> str:
         requests.RequestException: If there's an error fetching the URL.
         Exception: If there's an error parsing the ICS content.
     """
+    start_time = time.perf_counter()
     # Validate the URL first
     validate_url(url)
 
     # Fetch the ICS feed from the provided URL
     response = requests.get(url, timeout=30)
     response.raise_for_status()
-    print("Retrieved ICS feed from", url)
+    print(
+        f"Retrieved ICS feed from {url} with size {len(response.text)} bytes in {time.perf_counter() - start_time:.3f}s"
+    )
 
     # Parse the ICS content
     calendar = ics.Calendar(response.text)
@@ -86,4 +90,6 @@ def fetch_and_process_calendar(url: str) -> str:
         # Add the modified event to the new calendar
         new_calendar.events.add(event)
     print("Filtered calendar has", len(new_calendar.events), "upcoming events")
+    duration = time.perf_counter() - start_time
+    print(f"fetch_and_process_calendar completed in {duration:.3f}s")
     return new_calendar.serialize()
