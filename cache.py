@@ -47,10 +47,40 @@ def fetch_url(url):
 
 @cachetools.cached(cache=GRIDPOINT_CACHE, info=True)
 def fetch_gridpoint(url):
+    """
+    Fetch gridpoint data from the National Weather Service API.
+
+    Args:
+        url (str): The URL endpoint for the gridpoint data request.
+
+    Returns:
+        The response from the gridpoint API endpoint via request_url function.
+
+    Raises:
+        Any exceptions that may be raised by the underlying request_url function.
+    """
     return request_url(url)
 
 
 def request_url(url):
+    """
+    Fetches content from a URL with error handling.
+
+    Makes an HTTP GET request to the specified URL with a 10-second timeout.
+    Prints the URL being fetched for debugging purposes. Raises an exception
+    if the response status code is not 200 (OK).
+
+    Args:
+        url (str): The URL to fetch content from.
+
+    Returns:
+        requests.Response: The response object from the HTTP request.
+
+    Raises:
+        requests.exceptions.HTTPError: If the response status code is not 200.
+        requests.exceptions.Timeout: If the request times out after 10 seconds.
+        requests.exceptions.RequestException: For other request-related errors.
+    """
     print("Fetching", url)
     response = requests.get(url, timeout=10)
     if response.status_code != 200:
@@ -115,7 +145,7 @@ def refresh_soloize_cache_background():
                 result = soloize.fetch_and_process_calendar(url)
                 set_soloize_cache(url, result)
                 print(f"Successfully refreshed cache for: {url}")
-            except Exception as e:
+            except (requests.RequestException, ValueError, KeyError) as e:
                 print(f"Error refreshing cache for {url}: {e}")
 
 
