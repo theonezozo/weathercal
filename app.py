@@ -189,12 +189,18 @@ def soloize_handler() -> flask.Response:
     try:
         result = soloize.fetch_and_process_calendar_cached(url)
         return flask.Response(result.encode("utf-8"), content_type=CAL_CONTENT_TYPE)
+    except UnicodeError as err:
+        print(f"Encoding error processing ICS feed: {err}")
+        flask.abort(400, f"Invalid character encoding in ICS feed: {str(err)}")
     except ValueError as err:
         print(f"URL validation error: {err}")
         flask.abort(400, str(err))
-    except Exception as err:
-        print(f"Error processing ICS feed: {err}")
-        flask.abort(400, f"Failed to process ICS feed: {str(err)}")
+    except (ConnectionError, TimeoutError, OSError) as err:
+        print(f"Network error processing ICS feed: {err}")
+        flask.abort(502, f"Failed to fetch ICS feed: {str(err)}")
+    except (KeyError, AttributeError, TypeError) as err:
+        print(f"Data processing error: {err}")
+        flask.abort(400, f"Failed to process ICS feed format: {str(err)}")
 
 
 if __name__ == "__main__":
