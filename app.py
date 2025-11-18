@@ -26,12 +26,11 @@ import flask
 
 import nws
 import soloize
-import cache
 
 app = flask.Flask(__name__)
 
 # Start the background refresh thread for soloize cache
-cache.start_background_refresh()
+soloize.start_background_refresh()
 
 ICS_CONTENT_TYPE = "text/calendar; charset=utf-8"
 DEBUG = True

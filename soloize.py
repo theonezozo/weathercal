@@ -4,16 +4,29 @@ past events and stripping attendee information.
 
 The primary use case is to work around Outlook's limitation where it doesn't
 import events from Google Calendar ICS feeds if they have attendees.
+
+Caching:
+    Implements a simple dictionary-based cache for processed calendar feeds.
+    A background thread proactively refreshes tracked URLs every 3 hours
+    (SOLOIZE_REFRESH_INTERVAL) to keep the cache warm. Unlike TTL caches,
+    entries do not expire automatically—they are only updated by the refresh loop.
 """
 
 import datetime
+import threading
 import time
+from typing import Dict, Set
 from urllib.parse import urlparse
 
 import ics
 import requests
 
-import cache
+# Soloize cache for processed calendar feeds
+# Using proactive refresh (every 3 hours) instead of TTL expiration
+SOLOIZE_CACHE: Dict[str, str] = {}
+SOLOIZE_CACHE_LOCK = threading.Lock()
+SOLOIZE_TRACKED_URLS: Set[str] = set()
+SOLOIZE_REFRESH_INTERVAL = 3 * 60 * 60  # 3 hours in seconds
 
 
 def validate_url(url: str) -> None:
@@ -97,6 +110,82 @@ def fetch_and_process_calendar(url: str) -> str:
     return new_calendar.serialize()
 
 
+def get_soloize_cache(url: str) -> str | None:
+    """
+    Retrieves a cached soloize result for the given URL.
+
+    Args:
+        url (str): The calendar URL to retrieve from cache.
+
+    Returns:
+        str | None: The cached calendar content or None if not cached.
+    """
+    with SOLOIZE_CACHE_LOCK:
+        return SOLOIZE_CACHE.get(url)
+
+
+def set_soloize_cache(url: str, content: str) -> None:
+    """
+    Stores a soloize result in the cache and tracks the URL for proactive refresh.
+
+    Args:
+        url (str): The calendar URL.
+        content (str): The processed calendar content to cache.
+    """
+    with SOLOIZE_CACHE_LOCK:
+        SOLOIZE_CACHE[url] = content
+        SOLOIZE_TRACKED_URLS.add(url)
+
+
+def get_tracked_urls() -> Set[str]:
+    """
+    Returns the set of URLs being tracked for proactive refresh.
+
+    Returns:
+        Set[str]: A copy of tracked URLs.
+    """
+    with SOLOIZE_CACHE_LOCK:
+        return SOLOIZE_TRACKED_URLS.copy()
+
+
+def refresh_soloize_cache_background():
+    """
+    Background thread function that periodically refreshes all tracked soloize feeds.
+    
+    Runs every 3 hours (SOLOIZE_REFRESH_INTERVAL) and updates the cache for all
+    tracked URLs. This proactive refresh ensures that cached content stays fresh
+    without relying on TTL expiration.
+    """
+    while True:
+        time.sleep(SOLOIZE_REFRESH_INTERVAL)
+
+        tracked = get_tracked_urls()
+        print(f"Background refresh: updating {len(tracked)} tracked soloize feeds")
+
+        for url in tracked:
+            try:
+                print(f"Proactively refreshing soloize cache for: {url}")
+                result = fetch_and_process_calendar(url)
+                set_soloize_cache(url, result)
+                print(f"Successfully refreshed cache for: {url}")
+            except (requests.RequestException, ValueError, KeyError) as e:
+                print(f"Error refreshing cache for {url}: {e}")
+
+
+def start_background_refresh():
+    """
+    Starts the background refresh thread for soloize cache.
+    
+    Should be called once when the application starts. The thread runs as a daemon,
+    so it will automatically terminate when the main application exits.
+    """
+    refresh_thread = threading.Thread(
+        target=refresh_soloize_cache_background, daemon=True, name="soloize-cache-refresh"
+    )
+    refresh_thread.start()
+    print("Started background soloize cache refresh thread")
+
+
 def fetch_and_process_calendar_cached(url: str) -> str:
     """
     Fetches and processes an ICS calendar with caching support.
@@ -118,7 +207,7 @@ def fetch_and_process_calendar_cached(url: str) -> str:
         Exception: If there's an error parsing the ICS content.
     """
     # Try to get from cache first
-    cached = cache.get_soloize_cache(url)
+    cached = get_soloize_cache(url)
     if cached is not None:
         print(f"Returning cached soloize result for {url}")
         return cached
@@ -128,7 +217,7 @@ def fetch_and_process_calendar_cached(url: str) -> str:
     result = fetch_and_process_calendar(url)
 
     # Store in cache
-    cache.set_soloize_cache(url, result)
+    set_soloize_cache(url, result)
     print(f"Cached soloize result for {url}")
 
     return result
