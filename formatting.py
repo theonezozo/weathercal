@@ -78,13 +78,13 @@ def create_uid(string_to_hash):
 TIMESTAMP_FORMAT = "%a %b %d %I:%M %p %Z"
 
 
-def format_timestamp(timezone: str, dt: datetime) -> str:
+def format_timestamp(timezone: str, dt: datetime.datetime) -> str:
     """
     Converts a given datetime object to a specified timezone and formats it as a string.
 
     Args:
         timezone (str): The timezone to convert the datetime object to.
-        dt (datetime): The datetime object to be converted and formatted.
+        dt (datetime.datetime): The datetime object to be converted and formatted.
 
     Returns:
         str: The formatted datetime string in the specified timezone.

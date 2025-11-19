@@ -7,7 +7,7 @@ warm weather, cool weather, comfortable weather, and weather alerts.
 import datetime
 import json
 import re
-from typing import Tuple
+from typing import Tuple, Optional
 
 import flask
 import ics
@@ -30,7 +30,8 @@ DEFAULT_GRIDPOINT = {
     "timeZone": "America/Los_Angeles",
 }
 
-# URLs for fetching weather forecasts. For now, they're hard-coded to downtown Mountain View, CA, USA.
+# URLs for fetching weather forecasts. For now, they're hard-coded to downtown
+# Mountain View, CA, USA.
 URL = "https://api.weather.gov/gridpoints/MTR/93,86/forecast/hourly"
 ALERT_URL = "https://api.weather.gov/alerts/active/zone/CAZ508"
 
@@ -55,15 +56,18 @@ def fetch_url(url: str) -> requests.Response:
     except requests.RequestException as err:
         print("Error:", err)
         response = err.response
+        if response is None:
+            flask.abort(500, "Request failed without response")
         flask.abort(response.status_code, response.text)
 
 
-def get_rain_calendar(gridpoint: dict = None) -> str:
+def get_rain_calendar(gridpoint: Optional[dict] = None) -> str:
     """
     Builds a calendar of rainy weather events.
 
-    This function fetches weather data from a specified URL, filters the data to identify rainy weather events,
-    and then serializes the resulting calendar of these events.
+    This function fetches weather data from a specified URL, filters the data to
+    identify rainy weather events, and then serializes the resulting calendar
+    of these events.
 
     Returns:
         str: A serialized calendar of rainy weather events.
@@ -83,10 +87,12 @@ def is_rainy(period: dict) -> bool:
     Args:
         period (dict): A dictionary containing weather information for a specific period.
                        It should have a key "probabilityOfPrecipitation" which is a dictionary
-                       containing a key "value" representing the probability of precipitation as a percentage.
+                       containing a key "value" representing the probability of precipitation
+                       as a percentage.
 
     Returns:
-        bool: True if the probability of precipitation is greater than MIN_CHANCE_RAIN, False otherwise.
+        bool: True if the probability of precipitation is greater than MIN_CHANCE_RAIN,
+              False otherwise.
     """
     return period["probabilityOfPrecipitation"]["value"] > MIN_CHANCE_RAIN
 
@@ -105,10 +111,25 @@ def get_warm_calendar() -> str:
 
 
 def is_warm(period):
+    """
+    Determines if the given period is considered warm.
+
+    Args:
+        period (dict): A dictionary containing weather information for a specific period.
+
+    Returns:
+        bool: True if the temperature is greater than or equal to MIN_WARM_TEMP, False otherwise.
+    """
     return period["temperature"] >= MIN_WARM_TEMP
 
 
 def get_cool_calendar() -> str:
+    """
+    Generates a serialized calendar of interesting cool weather events.
+
+    Returns:
+        str: A serialized string representation of the cool weather events calendar.
+    """
     return build_interesting_weather_calendar(is_cool, fetch_url(URL)).serialize()
 
 
@@ -131,10 +152,25 @@ def is_cool(period: dict) -> bool:
 
 
 def get_comfort_calendar() -> str:
+    """
+    Generates a serialized calendar of comfortable weather events.
+
+    Returns:
+        str: A serialized string representation of the comfortable weather events calendar.
+    """
     return build_interesting_weather_calendar(is_comfortable, fetch_url(URL)).serialize()
 
 
 def is_comfortable(period):
+    """
+    Determines if the given period is considered comfortable.
+
+    Args:
+        period (dict): A dictionary containing weather information for a specific period.
+
+    Returns:
+        bool: True if the temperature is between MIN_WARM_TEMP and MAX_COOL_TEMP, False otherwise.
+    """
     return MIN_WARM_TEMP <= period["temperature"] <= MAX_COOL_TEMP
 
 
@@ -175,6 +211,12 @@ def build_alert_calendar(response) -> ics.Calendar:
 
 
 def get_best_weather_calendar() -> str:
+    """
+    Generates a serialized calendar of the best weather events.
+
+    Returns:
+        str: A serialized string representation of the best weather events calendar.
+    """
     return build_best_weather_calendar(fetch_url(URL)).serialize()
 
 
@@ -203,7 +245,7 @@ def build_best_weather_calendar(response):
         event.begin = start_time
         event.end = best_period["endTime"]
         event.description = (
-            f"{temp}F, {prob_precip}% chance of rain\nForecast updated {forecast_updated}"
+            f"{temp}F, {prob_precip}% chance of rain\n" f"Forecast updated {forecast_updated}"
         )
         calendar.events.add(event)
     return calendar
@@ -311,7 +353,8 @@ def forecast_desirability(period):
 
 def get_forecast_timestamp(data, timezone=TIMEZONE_NAME):
     """
-    Converts the 'updated' timestamp from the given data object to a localized format.
+    Converts the 'updated' timestamp from the given data object to a localized
+    format.
 
     Args:
         data (dict): The data containing the 'updated' timestamp.
